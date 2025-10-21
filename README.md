@@ -3,5 +3,6 @@
 `sudo cloudflared service uninstall`
 
 `sudo cloudflared service install eyJhIjoiOWUxZDNmYzZjY2MwNmIyZWRkODVkMDg1OWZiYjEwNTQiLCJ0IjoiNzEwZDcyMzctODlhMy00OWU1LWJjNDEtNTYxNDAwNzE3OGU0IiwicyI6Ik16ZGpNVGhsTlRFdFpqZzJNaTAwTkRGbExXRXpZVFl0WmpReFptSm1aalEzWlRNNSJ9`
-
+# docker
 `docker compose -f n8n.yml up -d`
+docker run cloudflare/cloudflared:latest tunnel --no-autoupdate run --token eyJhIjoiOWUxZDNmYzZjY2MwNmIyZWRkODVkMDg1OWZiYjEwNTQiLCJ0IjoiNzEwZDcyMzctODlhMy00OWU1LWJjNDEtNTYxNDAwNzE3OGU0IiwicyI6Ik16ZGpNVGhsTlRFdFpqZzJNaTAwTkRGbExXRXpZVFl0WmpReFptSm1aalEzWlRNNSJ9
