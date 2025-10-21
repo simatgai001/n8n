@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+ cloudflare-tunnel:
+   image: cloudflare/cloudflared:latest
+   container_name: cloudflare-tunnel
+   restart: unless-stopped
+   environment:
+     - TUNNEL_TOKEN=eyJhIjoiOWUxZDNmYzZjY2MwNmIyZWRkODVkMDg1OWZiYjEwNTQiLCJ0IjoiNzEwZDcyMzctODlhMy00OWU1LWJjNDEtNTYxNDAwNzE3OGU0IiwicyI6Ik16ZGpNVGhsTlRFdFpqZzJNaTAwTkRGbExXRXpZVFl0WmpReFptSm1aalEzWlRNNSJ9
+   command: tunnel run
