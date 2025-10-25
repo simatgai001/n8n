@@ -1,8 +1,6 @@
 volumes:
   n8n_storage:
-  postgres_storage:
   ollama_storage:
-  qdrant_storage:
 
 networks:
   demo:
@@ -11,10 +9,6 @@ x-n8n: &service-n8n
   image: n8nio/n8n:latest
   networks: ['demo']
   environment:
-    - DB_TYPE=postgresdb
-    - DB_POSTGRESDB_HOST=postgres
-    - DB_POSTGRESDB_USER=${POSTGRES_USER}
-    - DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
     - N8N_DIAGNOSTICS_ENABLED=false
     - N8N_PERSONALIZATION_ENABLED=false
     - N8N_ENCRYPTION_KEY
@@ -54,40 +48,9 @@ x-init-ollama: &init-ollama
     - OLLAMA_HOST=ollama:11434
   command:
     - "-c"
-    - "sleep 3; ollama pull llama3.2"
+    - "sleep 3; ollama pull mxbai-embed-large:latest"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    hostname: postgres
-    networks: ['demo']
-    restart: unless-stopped
-    environment:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_DB
-    volumes:
-      - postgres_storage:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  n8n-import:
-    <<: *service-n8n
-    hostname: n8n-import
-    container_name: n8n-import
-    entrypoint: /bin/sh
-    command:
-      - "-c"
-      - "n8n import:credentials --separate --input=/demo-data/credentials && n8n import:workflow --separate --input=/demo-data/workflows"
-    volumes:
-      - ./n8n/demo-data:/demo-data
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   n8n:
     <<: *service-n8n
     hostname: n8n
@@ -97,25 +60,47 @@ services:
       - 5678:5678
     volumes:
       - n8n_storage:/home/node/.n8n
-      - ./n8n/demo-data:/demo-data
       - ./shared:/data/shared
-    depends_on:
-      postgres:
-        condition: service_healthy
-      n8n-import:
-        condition: service_completed_successfully
+  cloudflare-tunnel:
+    image: cloudflare/cloudflared:latest              # Pull the latest version of the Cloudflare Tunnel image
+    container_name: cloudflare-tunnel                 # Name of the Cloudflare Tunnel container
+    hostname: cloudflare-tunnel                       # Hostname for the Cloudflare Tunnel container
 
-  qdrant:
-    image: qdrant/qdrant
-    hostname: qdrant
-    container_name: qdrant
-    networks: ['demo']
-    restart: unless-stopped
-    ports:
-      - 6333:6333
+    restart: unless-stopped                           # Restart the container unless manually stopped
+
+    # Logging configuration for Cloudflare Tunnel container
+    logging:
+      driver: "json-file"                             # Use the default json-file logging driver
+      options:
+        max-size: "100m"                              # Maximum log file size before rotation (100 MB)
+        max-file: "10"                                # Maximum number of log files to retain (10)
+
+    # Network mode configuration
+    network_mode: "host"                              # Use the host network (no isolation between host and container)
+
+    # Command to run Cloudflare Tunnel
+    command: tunnel run                               # Command to start the Cloudflare tunnel
+
+    # Volume configuration for time synchronization and hosts file persistence
     volumes:
-      - qdrant_storage:/qdrant/storage
+      - /etc/localtime:/etc/localtime:ro              # Synchronize time with the host
+      - ./config/hosts:/etc/hosts                     # Mount hosts file from host to container
 
+    # Environment variables for Cloudflare Tunnel
+    environment:
+      - "TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}"     # Pass the Cloudflare Tunnel token from environment variable
+
+    # Health check configuration to verify Cloudflare Tunnel readiness
+    healthcheck:
+      test: ["CMD", "cloudflared", "--version"]       # Check if cloudflared version command works
+      interval: 30s                                   # Time between health check attempts
+      timeout: 10s                                    # Time to wait for a response
+      retries: 3                                      # Number of retries before marking as unhealthy
+      start_period: 10s                               # Delay before health checks begin
+
+    # Container labels for additional metadata
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"  # Enable automatic updates with Watchtower
   ollama-cpu:
     profiles: ["cpu"]
     <<: *service-ollama
@@ -157,43 +142,3 @@ services:
     image: ollama/ollama:rocm
     depends_on:
      - ollama-gpu-amd
-  cloudflare-tunnel:
-    image: cloudflare/cloudflared:latest              # Pull the latest version of the Cloudflare Tunnel image
-    container_name: cloudflare-tunnel                 # Name of the Cloudflare Tunnel container
-    hostname: cloudflare-tunnel                       # Hostname for the Cloudflare Tunnel container
-
-    restart: unless-stopped                           # Restart the container unless manually stopped
-
-    # Logging configuration for Cloudflare Tunnel container
-    logging:
-      driver: "json-file"                             # Use the default json-file logging driver
-      options:
-        max-size: "100m"                              # Maximum log file size before rotation (100 MB)
-        max-file: "10"                                # Maximum number of log files to retain (10)
-
-    # Network mode configuration
-    network_mode: "host"                              # Use the host network (no isolation between host and container)
-
-    # Command to run Cloudflare Tunnel
-    command: tunnel run                               # Command to start the Cloudflare tunnel
-
-    # Volume configuration for time synchronization and hosts file persistence
-    volumes:
-      - /etc/localtime:/etc/localtime:ro              # Synchronize time with the host
-      - ./config/hosts:/etc/hosts                     # Mount hosts file from host to container
-
-    # Environment variables for Cloudflare Tunnel
-    environment:
-      - "TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}"     # Pass the Cloudflare Tunnel token from environment variable
-
-    # Health check configuration to verify Cloudflare Tunnel readiness
-    healthcheck:
-      test: ["CMD", "cloudflared", "--version"]       # Check if cloudflared version command works
-      interval: 30s                                   # Time between health check attempts
-      timeout: 10s                                    # Time to wait for a response
-      retries: 3                                      # Number of retries before marking as unhealthy
-      start_period: 10s                               # Delay before health checks begin
-
-    # Container labels for additional metadata
-    labels:
-      - "com.centurylinklabs.watchtower.enable=true"  # Enable automatic updates with Watchtower
