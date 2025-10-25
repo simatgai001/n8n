@@ -60,7 +60,7 @@ services:
       - 5678:5678
     volumes:
       - n8n_storage:/home/node/.n8n
-      - ./shared:/data/shared
+      - ./local-files:/files
   cloudflare-tunnel:
     image: cloudflare/cloudflared:latest              # Pull the latest version of the Cloudflare Tunnel image
     container_name: cloudflare-tunnel                 # Name of the Cloudflare Tunnel container
@@ -83,7 +83,7 @@ services:
 
     # Volume configuration for time synchronization and hosts file persistence
     volumes:
-      - /etc/localtime:/etc/localtime:ro              # Synchronize time with the host
+      - ./etc/localtime:/etc/localtime:ro              # Synchronize time with the host
       - ./config/hosts:/etc/hosts                     # Mount hosts file from host to container
 
     # Environment variables for Cloudflare Tunnel
