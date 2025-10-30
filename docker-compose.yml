@@ -1,4 +1,5 @@
 volumes:
+  data:
   ollama_storage:
 
 networks:
@@ -57,7 +58,7 @@ services:
     ports:
       - 5678:5678
     volumes:
-      - /home/user/n8n/node:/home/node/
+      - data:/home/node/
       - ./local-files:/files
     healthcheck:
       test: ["CMD", "sh", "-c", "(wget -q -T 5 -O - http://localhost:5678/healthz 2>/dev/null | grep -qF '{\"status\":\"ok\"}') || exit 1"]
